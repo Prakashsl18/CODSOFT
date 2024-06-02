@@ -1,0 +1,89 @@
+import tkinter as tk
+from tkinter import messagebox
+import sqlite3 as sql
+
+def add_task():
+    task_text = task_entry.get()
+    if not task_text.strip():
+        messagebox.showinfo('Error', 'Task field is empty.')
+    else:
+        insert_task(task_text)
+        task_entry.delete(0, 'end')
+        update_listbox()
+
+def insert_task(task_text):
+    try:
+        cursor.execute('INSERT INTO tasks (title) VALUES (?)', (task_text,))
+        connection.commit()
+    except sql.Error as e:
+        print(f"Error inserting task: {e}")
+
+def update_listbox():
+    task_listbox.delete(0, 'end')
+    try:
+        cursor.execute('SELECT title FROM tasks')
+        tasks = cursor.fetchall()
+        for task in tasks:
+            task_listbox.insert('end', task[0])
+    except sql.Error as e:
+        print(f"Error fetching tasks: {e}")
+
+def delete_task():
+    try:
+        selected_index = task_listbox.curselection()[0]
+        selected_task = task_listbox.get(selected_index)
+        cursor.execute('DELETE FROM tasks WHERE title = ?', (selected_task,))
+        connection.commit()
+        task_listbox.delete(selected_index)
+    except IndexError:
+        messagebox.showinfo('Error', 'No task selected.')
+    except sql.Error as e:
+        print(f"Error deleting task: {e}")
+
+def delete_all_tasks():
+    if messagebox.askyesno('Delete All', 'Are you sure?'):
+        try:
+            cursor.execute('DELETE FROM tasks')
+            connection.commit()
+            task_listbox.delete(0, 'end')
+        except sql.Error as e:
+            print(f"Error deleting all tasks: {e}")
+
+def close():
+    try:
+        connection.commit()
+        connection.close()
+        gui_window.destroy()
+    except sql.Error as e:
+        print(f"Error closing database connection: {e}")
+
+if __name__ == "__main__":
+    gui_window = tk.Tk()
+    gui_window.title("To-Do List")
+    gui_window.geometry("665x400+550+250")
+    gui_window.resizable(0, 0)
+    gui_window.configure(bg="#B5E5CF")
+
+    connection = sql.connect('listOfTasks.db')
+    cursor = connection.cursor()
+    cursor.execute('CREATE TABLE IF NOT EXISTS tasks (title TEXT)')
+
+    functions_frame = tk.Frame(gui_window, bg="#8EE5EE")
+    functions_frame.pack(side="top", expand=True, fill="both")
+
+    task_label = tk.Label(functions_frame, text="TO-DO-LIST \n Enter the Task Title:", font=("arial", 14, "bold"), bg="#8EE5EE", fg="#FF6103")
+    task_label.place(x=20, y=30)
+
+    task_entry = tk.Entry(functions_frame, font=("Arial", 14), width=42, bg="white", fg="black")
+    task_entry.place(x=180, y=30)
+
+    tk.Button(functions_frame, text="Add", width=15, bg='#D4AC0D', font=("arial", 14, "bold"), command=add_task).place(x=18, y=80)
+    tk.Button(functions_frame, text="Remove", width=15, bg='#D4AC0D', font=("arial", 14, "bold"), command=delete_task).place(x=240, y=80)
+    tk.Button(functions_frame, text="Delete All", width=15, bg='#D4AC0D', font=("arial", 14, "bold"), command=delete_all_tasks).place(x=460, y=80)
+    tk.Button(functions_frame, text="Exit / Close", width=52, bg='#D4AC0D', font=("arial", 14, "bold"), command=close).place(x=17, y=330)
+
+    task_listbox = tk.Listbox(functions_frame, width=70, height=9, font="bold", selectmode='SINGLE', bg="WHITE", fg="BLACK", selectbackground="#FF8C00", selectforeground="BLACK")
+    task_listbox.place(x=17, y=140)
+
+    update_listbox()
+    gui_window.mainloop()
